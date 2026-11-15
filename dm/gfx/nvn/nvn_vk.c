@@ -3463,7 +3463,7 @@ static VkPipeline pso_make(vprog *pr, pkey k, const sst *ss) {
     if (r) { VLOG("[RED] graphics pipeline (vertex %s fragment %s) failed: %d", vs->key, fs ? fs->key : "-", r); return VK_NULL_HANDLE; }
     return p;
 }
-static VkPipeline pso_get(vprog *pr, VkPrimitiveTopology topo) {
+static VkPipeline pso_get(vprog *pr, VkPrimitiveTopology topo, uint32_t *used_st_out) {
     vshader *vs = pr->sh[0], *fs = pr->sh[1];
     pkey k; memset(&k, 0, sizeof k);
     for (int i = 0; i < 5; i++) k.sh[i] = pr->sh[i];
@@ -3472,14 +3472,24 @@ static VkPipeline pso_get(vprog *pr, VkPrimitiveTopology topo) {
     k.a2c = S.ms.a2c; k.poly = S.poly.mode == NVN_POLYGON_MODE_LINE ? 1 : S.poly.mode == NVN_POLYGON_MODE_POINT ? 2 : 0; k.clamp = (uint8_t)!!S.depth_clamp; k.topo = (uint8_t)topo_class(topo);
     k.logic_en = S.color.logic_op != NVN_LOGIC_OP_COPY; k.logic_op = (uint8_t)S.color.logic_op; k.depth_zero = (uint8_t)atomic_load(&g_depth_zero); k.discard = (uint8_t)!!S.rast_discard;
     k.ds_swap = (uint8_t)g_ds_swap;
+    uint32_t max_vb = g_props.limits.maxVertexInputBindings, used_st = 0;
+    uint32_t nlim = max_vb && max_vb < 16 ? max_vb : 16;
+    int has_unbound = 0;
     for (int i = 0; i < vs->nin; i++) {
         uint32_t loc = vs->in[i].location; if (loc >= 32) continue;
         k.attr[loc].used = 1;
-        if ((int)loc < S.nattr && S.attr[loc].fmt) { int st = S.attr[loc].stream; VkFormat f = vfmt_for(S.attr[loc].fmt, vs->in[i].sclass);
-            if (f && st < 16) { k.attr[loc].fmt = f; k.attr[loc].off = S.attr[loc].offset; k.attr[loc].bind = (uint8_t)st; k.attr[loc].inst = S.stream[st].divisor != 0; k.attr[loc].div = S.stream[st].divisor; continue; }
+        if ((int)loc < S.nattr && S.attr[loc].fmt) { uint32_t st = (uint32_t)S.attr[loc].stream; VkFormat f = vfmt_for(S.attr[loc].fmt, vs->in[i].sclass);
+            if (f && st < nlim) { k.attr[loc].fmt = f; k.attr[loc].off = S.attr[loc].offset; k.attr[loc].bind = (uint8_t)st; k.attr[loc].inst = S.stream[st].divisor != 0; k.attr[loc].div = S.stream[st].divisor; used_st |= 1u << st; continue; }
             RED_ONCE(25, "vertex attribute format %#x not mapped", S.attr[loc].fmt); }
-        k.attr[loc].fmt = vs->in[i].sclass == 1 ? VK_FORMAT_R32G32B32A32_UINT : vs->in[i].sclass == 2 ? VK_FORMAT_R32G32B32A32_SINT : VK_FORMAT_R32G32B32A32_SFLOAT; k.attr[loc].bind = 16;   // unbound: reads 0
+        k.attr[loc].fmt = vs->in[i].sclass == 1 ? VK_FORMAT_R32G32B32A32_UINT : vs->in[i].sclass == 2 ? VK_FORMAT_R32G32B32A32_SINT : VK_FORMAT_R32G32B32A32_SFLOAT;
+        has_unbound = 1; k.attr[loc].bind = 16;   // unbound: reads 0 (slot 16 if > 16 bindings supported, else remapped below)
     }
+    if (has_unbound && max_vb <= 16) {
+        uint32_t zbind = 0;
+        for (uint32_t b = nlim; b-- > 0; ) if (!(used_st >> b & 1)) { zbind = b; break; }
+        for (int loc = 0; loc < 32; loc++) if (k.attr[loc].used && k.attr[loc].bind == 16) k.attr[loc].bind = (uint8_t)zbind;
+    }
+    if (used_st_out) *used_st_out = used_st;
     if (!g_eds) {   // the state draw_ sets per draw where the driver lets it, as the same values (and the same rules: depth / stencil only with such an attachment)
         sst s; memset(&s, 0, sizeof s);
         s.cull = (uint8_t)(S.poly.cull == NVN_FACE_FRONT ? VK_CULL_MODE_FRONT_BIT : S.poly.cull == NVN_FACE_BACK ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE);
@@ -3491,7 +3501,7 @@ static VkPipeline pso_get(vprog *pr, VkPrimitiveTopology topo) {
             int f[2][4] = { { S.ds.fail_f, S.ds.zpass_f, S.ds.zfail_f, S.ds.sf_f }, { S.ds.fail_b, S.ds.zpass_b, S.ds.zfail_b, S.ds.sf_b } };
             for (int fc = 0; fc < 2; fc++) for (int j = 0; j < 4; j++) { int v = f[fc][j] - 1; s.sop[fc][j] = (uint8_t)(v >= 0 && v <= 7 ? v : j == 3 ? 7 : 0); }
         } else for (int fc = 0; fc < 2; fc++) s.sop[fc][3] = 7;
-        for (int loc = 0; loc < 32; loc++) if (k.attr[loc].used && k.attr[loc].bind < 16) s.stride[k.attr[loc].bind] = S.stream[k.attr[loc].bind].stride;
+        for (uint32_t st = 0; st < nlim; st++) if (used_st >> st & 1) s.stride[st] = S.stream[st].stride;
         return pso_lookup_s(pr, &k, &s, 1);
     }
     return pso_lookup(pr, &k, 1);
@@ -3840,7 +3850,8 @@ static void draw_(const p_draw *dw, const p_draw_idx *di, uint64_t *mark) {
     }
     int prim = dw ? dw->prim : di->prim; VkPrimitiveTopology topo = topo_of(prim);
     uint64_t pp1 = mark ? mono_ns() : 0;
-    VkPipeline p = pso_get(pr, topo); if (!p) return;
+    uint32_t used_st = 0;
+    VkPipeline p = pso_get(pr, topo, &used_st); if (!p) return;
     if (mark) { g_vp_pass += pp1 - pp0; g_vp_pso += mono_ns() - pp1; }   // (DM_VK_PROF: the "pass + pipeline" stage split)
     if (TD_TRACE) VLOG("[trace] draw vs %s fs %s blend_en %#x", pr->sh[0] ? pr->sh[0]->key : "-", pr->sh[1] ? pr->sh[1]->key : "-", (unsigned)S.color.blend_en);
     VkCommandBuffer cb = CB(); if (mark) mark[1] = mono_ns();
@@ -3881,14 +3892,17 @@ static void draw_(const p_draw *dw, const p_draw_idx *di, uint64_t *mark) {
     if (S.poly.offset_en & 4) vkCmdSetDepthBias(cb, S.po.units, S.po.clamp, S.po.factor); else vkCmdSetDepthBias(cb, 0, 0, 0);
     vkCmdSetBlendConstants(cb, S.blend_color);
     }
-    // vertex streams: the pool buffers at their addresses, strides from the stream state; binding 16 = zeros for unbound attributes
+    // vertex streams: the pool buffers at their addresses, strides from the stream state; unbound attributes read 0 via binding 16 (or an unused stream < 16 when maxVertexInputBindings <= 16)
+    uint32_t max_vb = g_props.limits.maxVertexInputBindings;
+    uint32_t nbind = max_vb > 16 ? 17u : (max_vb && max_vb < 16 ? max_vb : 16u);
     VkBuffer vb[17]; VkDeviceSize vo[17], vs_[17];
-    for (int s_ = 0; s_ < 16; s_++) { VkBuffer b; VkDeviceSize o;
-        if (S.vbuf[s_].address && pool_buf(S.vbuf[s_].address, 1, &b, &o, NULL)) { vb[s_] = b; vo[s_] = o; } else { vb[s_] = g_zero_buf; vo[s_] = 0; }
-        vs_[s_] = S.stream[s_].stride; }
-    vb[16] = g_zero_buf; vo[16] = 0; vs_[16] = 0;
-    if (g_eds) vkCmdBindVertexBuffers2(cb, 0, 17, vb, vo, NULL, vs_);
-    else vkCmdBindVertexBuffers(cb, 0, 17, vb, vo);   // (the strides are in the pipeline: sst)
+    for (uint32_t s_ = 0; s_ < 16 && s_ < nbind; s_++) { VkBuffer b; VkDeviceSize o;
+        if ((nbind > 16 || (used_st >> s_ & 1)) && S.vbuf[s_].address && pool_buf(S.vbuf[s_].address, 1, &b, &o, NULL)) { vb[s_] = b; vo[s_] = o; }
+        else { vb[s_] = g_zero_buf; vo[s_] = 0; }
+        vs_[s_] = (nbind > 16 || (used_st >> s_ & 1)) ? S.stream[s_].stride : 0; }
+    if (nbind > 16) { vb[16] = g_zero_buf; vo[16] = 0; vs_[16] = 0; }
+    if (g_eds) vkCmdBindVertexBuffers2(cb, 0, nbind, vb, vo, NULL, vs_);
+    else vkCmdBindVertexBuffers(cb, 0, nbind, vb, vo);   // (the strides are in the pipeline: sst)
     if (mark) mark[2] = mono_ns();
     VkPipelineLayout pl = prog_layout(pr, 0); g_np = pr->np[0];
     for (int st = 0; st < 5; st++) push_stage(pr->sh[st], st, VK_PIPELINE_BIND_POINT_GRAPHICS, pl);
