@@ -21,7 +21,6 @@ jobs:
     env:
       GAME: ${{ inputs.game || '010071B00F63A000' }}
       API: ${{ inputs.api || '29' }}
-      WORK: ${{ runner.temp }}/eastward-build
 
     steps:
       - name: Checkout repository
@@ -52,6 +51,7 @@ jobs:
       - name: Build Android APK
         run: |
           set -euo pipefail
+          export WORK="${{ runner.temp }}/eastward-build"
           sed -i 's/\r$//' scripts/build_apk_pc.sh \
             dm/android/extract_aot/build_extract_aot.sh \
             dm/android/xlate_aot/build_xlate_aot.sh \
