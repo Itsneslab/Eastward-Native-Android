@@ -44,3 +44,6 @@ nvn_samp_base	0x568
 nvn_img_base	0x120
 nvn_img_slots	8
 nvn_ssbo_bases	vs=0x110 ps=0x510 cs=0x310
+
+# ---- Controls ----
+touch_zlzr	on

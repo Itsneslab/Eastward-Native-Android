@@ -65,7 +65,7 @@ public final class GameMenu {
     private static final int BG = 0xF0121419, CARD = 0xFF1C1F26, CARD_LINE = 0xFF2A2E37, TEXT = 0xFFF2F3F5, SUB = 0xFF9AA0AB, CHIP = 0xFF262A33, WARN = 0xFFFFB74D;
     private static int accent(Activity a) {   // the game's colour: Sword blue, Shield magenta, Violet purple, Scarlet red
         String id = GameSettings.game(a)[0].toUpperCase(java.util.Locale.ROOT);
-        return id.startsWith("0100ABF") ? 0xFF2E9BFF : id.startsWith("01008DB") ? 0xFFE0306E : id.startsWith("01008F6") ? 0xFF9B5CFF : id.startsWith("0100A3D") ? 0xFFFF4D3D : 0xFF3DDC97;
+        return id.startsWith("0100ABF") ? 0xFF2E9BFF : id.startsWith("01008DB") ? 0xFFE0306E : id.startsWith("01008F6") ? 0xFF9B5CFF : id.startsWith("0100A3D") ? 0xFFFF4D3D : id.startsWith("010071B") ? 0xFFE85A38 : 0xFF3DDC97;
     }
     private static int dp(Activity a, float v) { return Math.round(v * a.getResources().getDisplayMetrics().density); }
     private static GradientDrawable round(int color, float r, int stroke, int strokeColor) {
