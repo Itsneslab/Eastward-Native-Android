@@ -132,10 +132,9 @@ public final class SetupActivity extends Activity {
             setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE); setContentView(new android.view.View(this));
             getWindow().getDecorView().post(() -> GameMenu.show(this, 0)); return;
         }
-        // official release or not (BuildSigner): into env.txt every start, so the game's log says which; an unofficial build is told so before the game starts
+        // build signer metadata for logs
         String[] signers = BuildSigner.digests(this); boolean official = BuildSigner.official(signers);
         envSet("DM_BUILD_SIGNER", BuildSigner.label(signers));
-        if (!official) Toast.makeText(this, unofficial(), Toast.LENGTH_LONG).show();
         boolean asked = getIntent().getBooleanExtra("setup", false);
         // which game: a game's home screen shortcut names it; from the app's icon, with more than one game set up, this screen lets the player choose (the dual launcher)
         String want = getIntent().getStringExtra("game");
@@ -175,8 +174,8 @@ public final class SetupActivity extends Activity {
     private void setupScreen(boolean official) {
         dp = getResources().getDisplayMetrics().density;
         if (getActionBar() != null) getActionBar().hide();
-        boolean first = readyGames().isEmpty(), many = GameSettings.games(this).size() > 1; int acc = accent(game()[0]);
-        getWindow().setStatusBarColor(0xFF0B0C10); getWindow().setNavigationBarColor(0xFF0B0C10);
+        boolean first = readyGames().isEmpty(), many = GameSettings.games(this).size() > 1; int acc = accent(game()[0]), ink = acc == 0xFFF5C428 ? 0xFF1A1710 : 0xFFFFFFFF;
+        getWindow().setStatusBarColor(mix(acc, 0xFF12141A, 0.72f)); getWindow().setNavigationBarColor(0xFF0E1015);
         restoreImported();
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(px(20), px(28), px(20), px(28));
@@ -184,12 +183,12 @@ public final class SetupActivity extends Activity {
         android.graphics.drawable.GradientDrawable lc = new android.graphics.drawable.GradientDrawable(); lc.setCornerRadius(18 * dp); logo.setBackground(lc);
         root.addView(logo, new LinearLayout.LayoutParams(px(112), px(112)));
         // the first start: the app's name and the games it runs; later, the game this screen sets up
-        TextView title = text(root, first && many ? getApplicationInfo().loadLabel(getPackageManager()).toString() : gameName(), 26, 0xFFF2F3F5, true); title.setGravity(Gravity.CENTER);
+        TextView title = text(root, first && many ? getApplicationInfo().loadLabel(getPackageManager()).toString() : gameName(), 26, 0xFFF7F4E8, true); title.setGravity(Gravity.CENTER);
         title.setPadding(0, px(10), 0, 0);
-        if (!official) { TextView u = text(root, T.t(this, "Community build (GPL-3.0, based on nxnative)."), 12, 0xFFA9AFBA, false); u.setGravity(Gravity.CENTER); }
+        TextView u = text(root, T.t(this, "Eastward Native · Custom SVG Touch & Mali Vulkan Edition"), 12, 0xFFE8D595, false); u.setGravity(Gravity.CENTER); u.setPadding(0, px(2), 0, 0);
         TextView note = text(root, first ? T.t(this, "Welcome! To play, set up %s from your own Switch dump. It takes three steps.", many ? gamesNamed() : gameName())
                                            + "\n" + T.t(this, "No game files or keys come with this app; yours never leave the phone.")
-                                         : T.t(this, "Set the game up from your own dump. No game files or keys come with this app; yours never leave the phone."), 14, 0xFFA9AFBA, false);
+                                         : T.t(this, "Set the game up from your own dump. No game files or keys come with this app; yours never leave the phone."), 14, 0xFFC5C9D4, false);
         note.setGravity(Gravity.CENTER); note.setPadding(0, px(6), 0, px(6));
         // repository link from assets/app
         TextView by = text(root, GameSettings.app(this)[1], 13, acc, false); by.setGravity(Gravity.CENTER); by.setPadding(0, 0, 0, px(6));
@@ -199,24 +198,24 @@ public final class SetupActivity extends Activity {
         String ver = GameSettings.version(this);
         text(c1, "1.0.0".equals(ver) ? T.t(this, "The game file (.nsp or .xci, plus any update or DLC).") : T.t(this, "The base game (.nsp or .xci), the %s update and any DLC. You can choose them all at once.", ver), 13, 0xFFA9AFBA, false);
         gameText = text(c1, "", 14, 0xFFF2F3F5, false); gameText.setPadding(0, px(8), 0, px(8));
-        LinearLayout r1 = hrow(c1); pill(r1, T.t(this, "Choose game files"), acc, 0xFFFFFFFF, v -> pick(PICK_GAME, true));
-        clear = pill(r1, T.t(this, "Clear"), 0xFF2A2E37, 0xFFC4C9D2, v -> clearGames());
+        LinearLayout r1 = hrow(c1); pill(r1, T.t(this, "Choose game files"), acc, ink, v -> pick(PICK_GAME, true));
+        clear = pill(r1, T.t(this, "Clear"), 0xFF282B34, 0xFFC4C9D2, v -> clearGames());
         LinearLayout c2 = card(root, "2", T.t(this, "Your keys"), acc);
         text(c2, T.t(this, "prod.keys from your own Switch (and title.keys if your dump needs it)."), 13, 0xFFA9AFBA, false);
         keysText = text(c2, "", 14, 0xFFF2F3F5, false); keysText.setPadding(0, px(8), 0, px(8));
-        pill(c2, T.t(this, "Choose keys"), acc, 0xFFFFFFFF, v -> pick(PICK_KEYS, true));
+        pill(c2, T.t(this, "Choose keys"), acc, ink, v -> pick(PICK_KEYS, true));
         LinearLayout c3 = card(root, "3", T.t(this, "Set up"), acc);
         text(c3, T.t(this, "This takes a long time on a phone: keep this screen open, ideally plugged in."), 13, 0xFFA9AFBA, false);
-        setup = pill(c3, first ? T.t(this, "Set up the game") : T.t(this, "Set up again"), acc, 0xFFFFFFFF, v -> startSetup(false));
+        setup = pill(c3, first ? T.t(this, "Set up the game") : T.t(this, "Set up again"), acc, ink, v -> startSetup(false));
         ((LinearLayout.LayoutParams) setup.getLayoutParams()).topMargin = px(10);
         bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal); bar.setMax(600); bar.setProgressTintList(android.content.res.ColorStateList.valueOf(acc));
         c3.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         status = text(c3, "", 14, 0xFFF2F3F5, false); status.setPadding(0, px(8), 0, 0);
-        anyway = pill(c3, T.t(this, "Set up anyway"), 0xFF2A2E37, 0xFFF2F3F5, v -> new android.app.AlertDialog.Builder(this).setTitle(T.t(this, "Set up anyway?"))
+        anyway = pill(c3, T.t(this, "Set up anyway"), 0xFF282B34, 0xFFF2F3F5, v -> new android.app.AlertDialog.Builder(this).setTitle(T.t(this, "Set up anyway?"))
             .setMessage(T.t(this, "The damaged parts of your files are kept as they are. The game may crash or show glitches where it uses them. Copying your files again in full is the real fix."))
             .setPositiveButton(T.t(this, "Set up anyway"), (d, w) -> startSetup(true)).setNegativeButton(T.t(this, "Cancel"), null).show());
         ((LinearLayout.LayoutParams) anyway.getLayoutParams()).topMargin = px(8); anyway.setVisibility(android.view.View.GONE);
-        play = pill(root, T.t(this, "Play"), acc, 0xFFFFFFFF, v -> startGame()); play.setTextSize(18);
+        play = pill(root, T.t(this, "Play"), acc, ink, v -> startGame()); play.setTextSize(18);
         ((LinearLayout.LayoutParams) play.getLayoutParams()).topMargin = px(16);
         // the rest
         more = new LinearLayout(this); more.setOrientation(LinearLayout.VERTICAL); root.addView(more, new LinearLayout.LayoutParams(-1, -2));
@@ -234,28 +233,16 @@ public final class SetupActivity extends Activity {
         LinearLayout r4 = hrow(saveBox);
         saveExport = pill(r4, T.t(this, "Export save data"), 0xFF2A2E37, 0xFFF2F3F5, v -> chooseSaveExport());
         saveImport = pill(r4, T.t(this, "Import edited save data"), 0xFF2A2E37, 0xFFF2F3F5, v -> chooseSaveImport());
-        shortcut = pill(saveBox, T.t(this, "Add %s to the home screen", gameName()), 0xFF2A2E37, 0xFFF2F3F5, v -> pinShortcut());
+        shortcut = pill(saveBox, T.t(this, "Add %s to the home screen", gameName()), 0xFF282B34, 0xFFF2F3F5, v -> pinShortcut());
         ((LinearLayout.LayoutParams) shortcut.getLayoutParams()).topMargin = px(8);
-        // the Vulkan driver: the phone's own, or an Adreno driver package (a zip with meta.json and the library, e.g. Mesa Turnip) opened through libadrenotools;
-        // most players never need it, so it stays folded away unless a driver package is in use
-        LinearLayout cd = card(more, null, T.t(this, "Graphics driver"), acc);
-        driverText = text(cd, "", 14, 0xFFF2F3F5, false);
-        LinearLayout drv = new LinearLayout(this); drv.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout r5 = hrow(drv); pill(r5, T.t(this, "Choose"), 0xFF2A2E37, 0xFFF2F3F5, v -> pick(PICK_DRIVER, false));
-        pill(r5, T.t(this, "Use the phone's own driver"), 0xFF2A2E37, 0xFFF2F3F5, v -> { DriverPackages.useSystem(this); refresh(); });
-        boolean custom = !envGet("DM_VK_DRIVER").isEmpty(); drv.setVisibility(custom ? android.view.View.VISIBLE : android.view.View.GONE);
-        TextView open = text(cd, T.t(this, "Change the driver (only if the game does not start)"), 13, acc, true); open.setPadding(0, px(8), 0, px(4));
-        open.setVisibility(custom ? android.view.View.GONE : android.view.View.VISIBLE);
-        open.setOnClickListener(v -> { drv.setVisibility(android.view.View.VISIBLE); open.setVisibility(android.view.View.GONE); });
-        cd.addView(drv); ((LinearLayout.LayoutParams) r5.getLayoutParams()).topMargin = px(8);
-        maliOptions(drv);
+        // Uses the device's system Vulkan driver by default.
         // setup's own heat (#262: an 8+ Gen 1 ran hot through a 2 h 43 min setup): half the workers, from the next setup or shader update
         LinearLayout cs = card(more, null, T.t(this, "Setting up"), acc);
         check(cs, T.t(this, "Keep the phone cooler: half the workers (setup takes longer)"), "DM_SETUP_COOL", "1");
-        TextView sn = text(more, T.t(this, "Settings (picture, graphics, textures, controller buttons, touch controls, mods) are in the game: tap the menu button at the top left, or hold − on a controller for 3 seconds for the controller buttons."), 13, 0xFF8A909B, false);
+        TextView sn = text(more, T.t(this, "Settings (picture, graphics, textures, controller buttons, touch controls, mods) are in the game: tap the menu button at the top left, or hold − on a controller for 3 seconds for the controller buttons."), 13, 0xFF9AA0AB, false);
         sn.setPadding(px(4), px(16), px(4), 0);
         ScrollView sv = new ScrollView(this); sv.setFillViewport(true); sv.addView(root);
-        sv.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[] { mix(acc, 0xFF0B0C10, 0.8f), 0xFF0B0C10, 0xFF0B0C10 }));
+        sv.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[] { mix(acc, 0xFF12141A, 0.72f), 0xFF0E1015, 0xFF0E1015 }));
         setContentView(sv);
         refresh(); gameIcon();
     }
@@ -263,7 +250,7 @@ public final class SetupActivity extends Activity {
     private String gamesNamed() { List<String> n = new ArrayList<>(); for (String[] g : GameSettings.games(this)) n.add(g[1]); return String.join(" " + T.t(this, "or") + " ", n); }
     // the game's colour: the launcher's cards, this screen's buttons
     static int accent(String id) { String up = id.toUpperCase(java.util.Locale.ROOT);
-        return up.startsWith("010071B") ? 0xFFE85A38 : up.startsWith("0100ABF") ? 0xFF2E9BFF : up.startsWith("01008DB") ? 0xFFE0306E : up.startsWith("01008F6") ? 0xFF9B5CFF : up.startsWith("0100A3D") ? 0xFFFF4D3D : 0xFF3DDC97; }
+        return up.startsWith("010071B") ? 0xFFF5C428 : up.startsWith("0100ABF") ? 0xFF2E9BFF : up.startsWith("01008DB") ? 0xFFE0306E : up.startsWith("01008F6") ? 0xFF9B5CFF : up.startsWith("0100A3D") ? 0xFFFF4D3D : 0xFF3DDC97; }
     private TextView text(LinearLayout parent, String s, float size, int color, boolean bold) {
         TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(color); if (bold) t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         parent.addView(t, new LinearLayout.LayoutParams(-1, -2)); return t;
@@ -271,10 +258,10 @@ public final class SetupActivity extends Activity {
     // a step: a rounded panel with its number in the game's colour, and its title
     private LinearLayout card(LinearLayout parent, String num, String title, int acc) {
         LinearLayout c = new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL); c.setPadding(px(16), px(14), px(16), px(16));
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable(); bg.setColor(0xE61C1F26); bg.setCornerRadius(18 * dp); bg.setStroke(px(1), 0x33FFFFFF);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable(); bg.setColor(0xEB1A1D24); bg.setCornerRadius(18 * dp); bg.setStroke(px(1), acc == 0xFFF5C428 ? 0x44F5C428 : 0x33FFFFFF);
         c.setBackground(bg);
         LinearLayout h = new LinearLayout(this); h.setOrientation(LinearLayout.HORIZONTAL); h.setGravity(Gravity.CENTER_VERTICAL); h.setPadding(0, 0, 0, px(6));
-        if (num != null) { TextView n = new TextView(this); n.setText(num); n.setTextSize(14); n.setTextColor(0xFFFFFFFF); n.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); n.setGravity(Gravity.CENTER);
+        if (num != null) { TextView n = new TextView(this); n.setText(num); n.setTextSize(14); n.setTextColor(acc == 0xFFF5C428 ? 0xFF1A1710 : 0xFFFFFFFF); n.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); n.setGravity(Gravity.CENTER);
             android.graphics.drawable.GradientDrawable nb = new android.graphics.drawable.GradientDrawable(); nb.setShape(android.graphics.drawable.GradientDrawable.OVAL); nb.setColor(acc); n.setBackground(nb);
             LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(px(26), px(26)); nl.rightMargin = px(10); h.addView(n, nl); }
         TextView t = new TextView(this); t.setText(title); t.setTextSize(17); t.setTextColor(0xFFF2F3F5); t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); h.addView(t);
@@ -319,9 +306,8 @@ public final class SetupActivity extends Activity {
             new int[] { mix(acc[0], 0xFF0B0C10, 0.78f), 0xFF0B0C10, mix(acc[acc.length - 1], 0xFF0B0C10, 0.78f) });
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setGravity(Gravity.CENTER); root.setBackground(back);
         root.setPadding((int) (24 * dp), (int) (10 * dp), (int) (24 * dp), (int) (10 * dp));
-        TextView title = new TextView(this); title.setText(getApplicationInfo().loadLabel(getPackageManager())); title.setTextSize(22); title.setTextColor(0xFFF2F3F5);
+        TextView title = new TextView(this); title.setText(getApplicationInfo().loadLabel(getPackageManager())); title.setTextSize(22); title.setTextColor(0xFFF7F4E8);
         title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); title.setGravity(Gravity.CENTER); root.addView(title);
-        if (!official) { TextView u = new TextView(this); u.setText(unofficial()); u.setTextColor(0xffff5252); u.setTextSize(12); u.setGravity(Gravity.CENTER); root.addView(u); }
         // the cards share the screen: as wide as two fit with room around them, the icon as tall as the screen allows under the title and above the link
         int cardW = Math.min((sw - (int) (48 * dp)) / all.size() - (int) (28 * dp), (int) (sh * 0.62f));
         int iconS = Math.min(cardW - (int) (28 * dp), sh - (int) (210 * dp));
@@ -339,7 +325,7 @@ public final class SetupActivity extends Activity {
             card.addView(icon, new LinearLayout.LayoutParams(iconS, iconS));
             TextView name = new TextView(this); name.setText(g[1]); name.setTextSize(17); name.setTextColor(0xFFF2F3F5); name.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
             name.setGravity(Gravity.CENTER); name.setSingleLine(true); name.setPadding(0, (int) (10 * dp), 0, (int) (8 * dp)); card.addView(name);
-            TextView go = new TextView(this); go.setText(T.t(this, ok ? "Play" : "Set up")); go.setTextSize(15); go.setTextColor(ok ? 0xFFFFFFFF : 0xFF9AA0AB); go.setGravity(Gravity.CENTER);
+            TextView go = new TextView(this); go.setText(T.t(this, ok ? "Play" : "Set up")); go.setTextSize(15); go.setTextColor(ok ? (accent == 0xFFF5C428 ? 0xFF1A1710 : 0xFFFFFFFF) : 0xFF9AA0AB); go.setGravity(Gravity.CENTER);
             go.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); go.setPadding(0, (int) (9 * dp), 0, (int) (9 * dp));
             android.graphics.drawable.GradientDrawable gb = new android.graphics.drawable.GradientDrawable(); gb.setCornerRadius(20 * dp); gb.setColor(ok ? accent : 0xFF262A33); go.setBackground(gb);
             card.addView(go, new LinearLayout.LayoutParams(iconS, -2));

@@ -595,12 +595,12 @@ static int g_save_imported;   // a save archive was installed into the app's fol
 static void save_place(void) {
     char app[1100], shared[1100], par[1100], st[1200], cur[16] = "app"; const char *e = getenv("DM_SAVE_SHARED"); int want = e && atoi(e) == 1;
     snprintf(app, sizeof app, "%s/save", g_files); snprintf(st, sizeof st, "%s/save_place.txt", g_files);
-    { const char *pid = getenv("DM_PROGRAM_ID"); char up[20] = ""; if (pid) for (int k = 0; pid[k] && k < 16; k++) up[k] = (char)toupper((unsigned char)pid[k]);   // (Galar: the running game, Sword or Shield)
-      if (up[0]) snprintf(par, sizeof par, "/storage/emulated/0/Documents/Galar Native/%s", up); else snprintf(par, sizeof par, "/storage/emulated/0/Documents/Galar Native/%016llX", (unsigned long long)DM_GAME_PROGRAM_ID); } snprintf(shared, sizeof shared, "%s/save", par);
+    { const char *pid = getenv("DM_PROGRAM_ID"); char up[20] = ""; if (pid) for (int k = 0; pid[k] && k < 16; k++) up[k] = (char)toupper((unsigned char)pid[k]);
+      if (up[0]) snprintf(par, sizeof par, "/storage/emulated/0/Documents/Eastward Native/%s", up); else snprintf(par, sizeof par, "/storage/emulated/0/Documents/Eastward Native/%016llX", (unsigned long long)DM_GAME_PROGRAM_ID); } snprintf(shared, sizeof shared, "%s/save", par);
     { FILE *f = fopen(st, "r"); if (f) { if (fscanf(f, "%15s", cur) != 1) strcpy(cur, "app"); fclose(f); } }
     int in_shared = !strcmp(cur, "shared");
     if (want && !in_shared) {   // to Documents
-        mkdir("/storage/emulated/0/Documents", 0770); mkdir("/storage/emulated/0/Documents/Galar Native", 0770); mkdir(par, 0770);
+        mkdir("/storage/emulated/0/Documents", 0770); mkdir("/storage/emulated/0/Documents/Eastward Native", 0770); mkdir(par, 0770);
         char probe[1200]; snprintf(probe, sizeof probe, "%s/.write-test", par); int fd = open(probe, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd < 0) { fprintf(stderr, "boot: [RED] save folder: %s cannot be written (errno %d: All files access not given?): the save stays in the app's folder\n", par, errno); return; }
         close(fd); unlink(probe);
@@ -813,8 +813,8 @@ static void host_start(void) {
     // the log's first lines: the credits (the app is GPL-3.0-or-later, its older code also MIT: its copyright notice stays with every copy; the full text is in the menu, About) and, once env.txt is
     //   read, whether this is an official build (BuildSigner's DM_BUILD_SIGNER), so a log attached to an issue says at once whether it comes from a repack
     { const char *v = getenv("DM_APP_VERSION");
-      fprintf(stderr, "boot: app version code %s. Copyright (c) 2026 jhaizhou (d2r-mobile, nxnative) and the Galar Native (formerly PKShield Android) contributors. "
-                      "GPL-3.0-or-later, older parts also MIT (menu, About). Source and official downloads: github.com/simipoB/Galar-Native-Android/releases\n", v && *v ? v : "?"); }
+      fprintf(stderr, "boot: app version code %s. Copyright (c) 2026 jhaizhou (d2r-mobile, nxnative) and the Eastward Native contributors. "
+                      "GPL-3.0-or-later, older parts also MIT (menu, About). Source and downloads: github.com/Itsneslab/Eastward-Native-Android\n", v && *v ? v : "?"); }
     { char d[256]; dl_name(d, sizeof d, "log-previous"); copy_file(q, d); if (g_dl_note[0]) fprintf(stderr, "%s\n", g_dl_note); }
     snprintf(g_crash_src, sizeof g_crash_src, "%s/log.txt", g_files); dl_name(g_crash_dl, sizeof g_crash_dl, "log");
     if (g_dl_note[0]) fprintf(stderr, "%s\n", g_dl_note);
@@ -831,8 +831,7 @@ static void host_start(void) {
           fprintf(stderr, "boot: allocator: large blocks cached for reuse (decay %s, cache count %s, cache size 64 MB %s)\n", a ? "on" : "refused", b ? "128" : "refused", c ? "set" : "refused");
       } }
     { const char *s = getenv("DM_BUILD_SIGNER");
-      if (s && !strcmp(s, "official")) fprintf(stderr, "boot: build: official (signed with the release key)\n");
-      else fprintf(stderr, "boot: build: UNOFFICIAL (%s): not a release from github.com/simipoB/Galar-Native-Android, it may have been changed\n", s && *s ? s : "signer unknown"); }
+      fprintf(stderr, "boot: build: %s (%s)\n", (s && !strcmp(s, "official")) ? "official" : "custom", s && *s ? s : "local"); }
     g_safe_advanced = safe_start(g_files);   // (after env.txt: the player's settings win; before the phone profile: its defaults do not)
     // why Android ended the previous run (GameActivity, ApplicationExitInfo): reason 2 a signal, 3 low memory, 4 / 5 a crash, 6 not responding, 10 / 11 the player /
     //   the app, 13 other (Samsung's game manager, heat), 14 frozen

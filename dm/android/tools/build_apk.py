@@ -17,10 +17,10 @@ PY_SKIP = ('test', 'idlelib', 'tkinter', 'turtledemo', 'ensurepip', 'pydoc_data'
 DM_PARTS = ['games/game.py', 'tools/patch_nso.py', 'gfx/tools', 'ios/tools/ios_metal.py', 'android/tools']   # and every game profile (setup names the other game when given its dump)
 sys.path.insert(0, os.path.join(DM, 'games')); import game as _game
 
-def png(size, top=(232, 90, 56), bg=(20, 26, 36)):   # the app's icon, drawn here (no game artwork ships): an Eastward emblem badge on a dark ground
-    gold = (246, 196, 83)
-    cream = (252, 232, 178)
-    inner = (24, 30, 42)
+def png(size, top=(245, 196, 40), bg=(22, 24, 32)):   # the app's icon, drawn here (no game artwork ships): an Eastward emblem badge on a dark ground
+    gold = (255, 214, 68)
+    cream = (255, 246, 196)
+    inner = (24, 26, 36)
     px = []
     for y in range(size):
         row = bytearray([0])

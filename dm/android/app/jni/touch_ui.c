@@ -9,6 +9,7 @@
 // The layout and drawing parts also build into the Mac Vulkan host (mac_vk_build.sh), whose DM_OVL_SHOT composes them over a game frame to check the look.
 #include "dm.h"
 #include "game_profile.h"   // DM_GAME_TOUCH_ZLZR (the profile key touch_zlzr)
+#define IS_EASTWARD (!strcmp(DM_GAME_ID, "010071B00F63A000"))
 #if defined(DM_GAME_TOUCH_MENU) && DM_GAME_TOUCH_MENU
 #define GESTURES_ON 1   // the throw button and the touch gestures (touch_ui_event): the games with touch menus (Legends: Arceus)
 #else
@@ -81,44 +82,68 @@ static int l3r3_on(void) { if (g_l3r3 < 0) { const char *e = getenv("DM_TOUCH_L3
 // row), and the right half is the camera alone, by dragging (no right stick on screen). Fixed (default): the sticks where the layout puts them, as on Joy-Cons.
 // Asked for by a player whose thumbs kept hitting the game's own touch buttons (the Poké Ball / satchel) around the fixed sticks
 static int g_float = -1;
-static int float_on(void) { if (g_float < 0) { const char *e = getenv("DM_TOUCH_STICKS"); g_float = e && !strcmp(e, "floating"); } return g_float; }
+static int float_on(void) { if (g_float < 0) { const char *e = getenv("DM_TOUCH_STICKS"); g_float = e && *e ? !strcmp(e, "floating") : IS_EASTWARD; } return g_float; }
 static void layout(float w, float h) {
     static int init; if (!init++) for (int i = 0; i < 10; i++) g_ptr[i].id = -1;   // no finger down
     if (w == g_w && h == g_h) return;
     g_w = w; g_h = h;
-    // the outer controls keep about 0.2 of the height (~290 px on a 1440 px phone) clear of the screen's long edges, where the system's navigation buttons and edge
-    // swipes are: with the A button nearer, a thumb on it opened recents
     float s = h, br = 0.074f * s, gap = 0.135f * s, fx = w - 0.40f * s, fy = h - 0.30f * s, sr = 0.064f * s, mr = 0.040f * s;
-    g_c[C_A] = (ctl){ fx + gap, fy, br, OVL_G_A, 1, DM_BTN_A };   // the Switch's diamond, all four the same
-    g_c[C_B] = (ctl){ fx, fy + gap, br, OVL_G_B, 1, DM_BTN_B };
-    g_c[C_X] = (ctl){ fx, fy - gap, br, OVL_G_X, 1, DM_BTN_X };
-    g_c[C_Y] = (ctl){ fx - gap, fy, br, OVL_G_Y, 1, DM_BTN_Y };
-    g_c[C_L] = (ctl){ 0.25f * s, 0.30f * s, sr, OVL_G_L, 1, DM_BTN_L };
-    g_c[C_R] = (ctl){ w - 0.25f * s, 0.30f * s, sr, OVL_G_R, 1, DM_BTN_R };
-    // ZL / ZR above L / R where the game uses them (profile key touch_zlzr: Legends: Arceus aims with ZL and throws with ZR); hidden otherwise (Shield)
+    if (IS_EASTWARD) {
+        // Ergonomic Android RPG layout for Eastward: Floating left stick, large Attack (Y) bottom-right, Interact (A) / Ability (X) / Group (B) arc,
+        // Swap Char (ZR) & Weapon (R) above, Inventory (L) / Map (-) / Pause (+) top-right, App settings top-left; ZL/Right-Stick/D-Pad hidden by default
+        g_c[C_Y] = (ctl){ w - 0.22f * s, h - 0.22f * s, 0.102f * s, OVL_G_Y, 1, DM_BTN_Y };
+        g_c[C_B] = (ctl){ w - 0.45f * s, h - 0.17f * s, 0.064f * s, OVL_G_B, 1, DM_BTN_B };
+        g_c[C_X] = (ctl){ w - 0.41f * s, h - 0.39f * s, 0.068f * s, OVL_G_X, 1, DM_BTN_X };
+        g_c[C_A] = (ctl){ w - 0.21f * s, h - 0.47f * s, 0.068f * s, OVL_G_A, 1, DM_BTN_A };
+        g_c[C_ZR] = (ctl){ w - 0.18f * s, h - 0.68f * s, 0.054f * s, OVL_G_ZR, 1, DM_BTN_ZR };
+        g_c[C_R] = (ctl){ w - 0.35f * s, h - 0.64f * s, 0.054f * s, OVL_G_R, 1, DM_BTN_R };
+        g_c[C_PLUS] = (ctl){ w - 0.13f * s, 0.10f * s, 0.048f * s, OVL_G_PLUS, 1, DM_BTN_PLUS };
+        g_c[C_MINUS] = (ctl){ w - 0.25f * s, 0.10f * s, 0.048f * s, OVL_G_MINUS, 1, DM_BTN_MINUS };
+        g_c[C_L] = (ctl){ w - 0.37f * s, 0.10f * s, 0.050f * s, OVL_G_L, 1, DM_BTN_L };
+        g_c[C_ZL] = (ctl){ w - 0.50f * s, 0.10f * s, 0.048f * s, OVL_G_ZL, 0, DM_BTN_ZL };
+        g_c[C_STICK] = (ctl){ 0.28f * s, h - 0.28f * s, 0.135f * s, OVL_G_NONE, 1, 0 };
+        {
+            float dx = 0.72f * s, dy = h - 0.20f * s, dg = 0.085f * s, dr = 0.050f * s;
+            g_c[C_UP] = (ctl){ dx, dy - dg, dr, OVL_G_NONE, 0, DM_BTN_UP }; g_c[C_DOWN] = (ctl){ dx, dy + dg, dr, OVL_G_NONE, 0, DM_BTN_DOWN };
+            g_c[C_LEFT] = (ctl){ dx - dg, dy, dr, OVL_G_NONE, 0, DM_BTN_LEFT }; g_c[C_RIGHT] = (ctl){ dx + dg, dy, dr, OVL_G_NONE, 0, DM_BTN_RIGHT };
+        }
+        g_c[C_THROW] = (ctl){ w - 0.66f * s, h - 0.56f * s, 0.10f * s, OVL_G_NONE, 0, DM_BTN_ZR };
+        g_c[C_RSTICK] = (ctl){ w - 0.80f * s, h - 0.19f * s, 0.11f * s, OVL_G_NONE, 0, 0 };
+        g_c[C_MENU] = (ctl){ 0.12f * s, 0.10f * s, 0.046f * s, OVL_G_NONE, 1, 0 };
+        g_c[C_L3] = (ctl){ g_c[C_STICK].cx, g_c[C_STICK].cy - 0.22f * s, 0.05f * s, OVL_G_L3, 0, DM_BTN_LS };
+        g_c[C_R3] = (ctl){ g_c[C_RSTICK].cx, g_c[C_RSTICK].cy - 0.21f * s, 0.05f * s, OVL_G_R3, 0, DM_BTN_RS };
+    } else {
+        g_c[C_A] = (ctl){ fx + gap, fy, br, OVL_G_A, 1, DM_BTN_A };   // the Switch's diamond, all four the same
+        g_c[C_B] = (ctl){ fx, fy + gap, br, OVL_G_B, 1, DM_BTN_B };
+        g_c[C_X] = (ctl){ fx, fy - gap, br, OVL_G_X, 1, DM_BTN_X };
+        g_c[C_Y] = (ctl){ fx - gap, fy, br, OVL_G_Y, 1, DM_BTN_Y };
+        g_c[C_L] = (ctl){ 0.25f * s, 0.30f * s, sr, OVL_G_L, 1, DM_BTN_L };
+        g_c[C_R] = (ctl){ w - 0.25f * s, 0.30f * s, sr, OVL_G_R, 1, DM_BTN_R };
+        // ZL / ZR above L / R where the game uses them (profile key touch_zlzr: Legends: Arceus aims with ZL and throws with ZR); hidden otherwise (Shield)
 #if defined(DM_GAME_TOUCH_ZLZR) && DM_GAME_TOUCH_ZLZR
-    g_c[C_ZL] = (ctl){ 0.25f * s, 0.11f * s, sr, OVL_G_ZL, 1, DM_BTN_ZL };
-    g_c[C_ZR] = (ctl){ w - 0.25f * s, 0.11f * s, sr, OVL_G_ZR, 1, DM_BTN_ZR };
+        g_c[C_ZL] = (ctl){ 0.25f * s, 0.11f * s, sr, OVL_G_ZL, 1, DM_BTN_ZL };
+        g_c[C_ZR] = (ctl){ w - 0.25f * s, 0.11f * s, sr, OVL_G_ZR, 1, DM_BTN_ZR };
 #else
-    g_c[C_ZL] = (ctl){ 0.26f * s, 0.10f * s, sr * 0.8f, OVL_G_ZL, 0, DM_BTN_ZL };
-    g_c[C_ZR] = (ctl){ w - 0.26f * s, 0.10f * s, sr * 0.8f, OVL_G_ZR, 0, DM_BTN_ZR };
+        g_c[C_ZL] = (ctl){ 0.26f * s, 0.10f * s, sr * 0.8f, OVL_G_ZL, 0, DM_BTN_ZL };
+        g_c[C_ZR] = (ctl){ w - 0.26f * s, 0.10f * s, sr * 0.8f, OVL_G_ZR, 0, DM_BTN_ZR };
 #endif
-    g_c[C_MINUS] = (ctl){ w * 0.5f - 0.13f * s, 0.06f * s, mr, OVL_G_MINUS, 1, DM_BTN_MINUS };
-    g_c[C_PLUS] = (ctl){ w * 0.5f + 0.13f * s, 0.06f * s, mr, OVL_G_PLUS, 1, DM_BTN_PLUS };
-    g_c[C_STICK] = (ctl){ 0.36f * s, h - 0.27f * s, 0.14f * s, OVL_G_NONE, 1, 0 };
-    {   // the D-pad below-right of the left stick, as on a left Joy-Con (bag pockets, menus): four small buttons with a dot towards their direction
-        float dx = 0.80f * s, dy = h - 0.19f * s, dg = 0.085f * s, dr = 0.050f * s;
-        g_c[C_UP] = (ctl){ dx, dy - dg, dr, OVL_G_NONE, 1, DM_BTN_UP }; g_c[C_DOWN] = (ctl){ dx, dy + dg, dr, OVL_G_NONE, 1, DM_BTN_DOWN };
-        g_c[C_LEFT] = (ctl){ dx - dg, dy, dr, OVL_G_NONE, 1, DM_BTN_LEFT }; g_c[C_RIGHT] = (ctl){ dx + dg, dy, dr, OVL_G_NONE, 1, DM_BTN_RIGHT };
+        g_c[C_MINUS] = (ctl){ w * 0.5f - 0.13f * s, 0.06f * s, mr, OVL_G_MINUS, 1, DM_BTN_MINUS };
+        g_c[C_PLUS] = (ctl){ w * 0.5f + 0.13f * s, 0.06f * s, mr, OVL_G_PLUS, 1, DM_BTN_PLUS };
+        g_c[C_STICK] = (ctl){ 0.36f * s, h - 0.27f * s, 0.14f * s, OVL_G_NONE, 1, 0 };
+        {   // the D-pad below-right of the left stick, as on a left Joy-Con (bag pockets, menus): four small buttons with a dot towards their direction
+            float dx = 0.80f * s, dy = h - 0.19f * s, dg = 0.085f * s, dr = 0.050f * s;
+            g_c[C_UP] = (ctl){ dx, dy - dg, dr, OVL_G_NONE, 1, DM_BTN_UP }; g_c[C_DOWN] = (ctl){ dx, dy + dg, dr, OVL_G_NONE, 1, DM_BTN_DOWN };
+            g_c[C_LEFT] = (ctl){ dx - dg, dy, dr, OVL_G_NONE, 1, DM_BTN_LEFT }; g_c[C_RIGHT] = (ctl){ dx + dg, dy, dr, OVL_G_NONE, 1, DM_BTN_RIGHT };
+        }
+        // THROW (Legends: Arceus): a Poké Ball where the right thumb rests, above-left of A B X Y: held = ZR (aim, the finger's drag turns the aim), released = throw
+        g_c[C_THROW] = (ctl){ w - 0.66f * s, h - 0.56f * s, 0.10f * s, OVL_G_NONE, GESTURES_ON, DM_BTN_ZR };
+        g_c[C_RSTICK] = (ctl){ w - 0.80f * s, h - 0.19f * s, 0.11f * s, OVL_G_NONE, 1, 0 };
+        g_c[C_MENU] = (ctl){ w * 0.5f - 0.24f * s, 0.06f * s, mr, OVL_G_NONE, 1, 0 };   // ☰ just left of −, at the top centre: the settings (front_open_menu); no Switch button
+        // L3 / R3 (pressing a stick in, #108): small buttons just above each stick, outside its touch area (1.3 x its radius) and clear of the D-pad and A B X Y on
+        //   16:9 to 20:9 screens; hide or move them in the layout editor like any other
+        g_c[C_L3] = (ctl){ g_c[C_STICK].cx, g_c[C_STICK].cy - 0.22f * s, 0.05f * s, OVL_G_L3, 1, DM_BTN_LS };
+        g_c[C_R3] = (ctl){ g_c[C_RSTICK].cx, g_c[C_RSTICK].cy - 0.21f * s, 0.05f * s, OVL_G_R3, 1, DM_BTN_RS };
     }
-    // THROW (Legends: Arceus): a Poké Ball where the right thumb rests, above-left of A B X Y: held = ZR (aim, the finger's drag turns the aim), released = throw
-    g_c[C_THROW] = (ctl){ w - 0.66f * s, h - 0.56f * s, 0.10f * s, OVL_G_NONE, GESTURES_ON, DM_BTN_ZR };
-    g_c[C_RSTICK] = (ctl){ w - 0.80f * s, h - 0.19f * s, 0.11f * s, OVL_G_NONE, 1, 0 };
-    g_c[C_MENU] = (ctl){ w * 0.5f - 0.24f * s, 0.06f * s, mr, OVL_G_NONE, 1, 0 };   // ☰ just left of −, at the top centre: the settings (front_open_menu); no Switch button
-    // L3 / R3 (pressing a stick in, #108): small buttons just above each stick, outside its touch area (1.3 x its radius) and clear of the D-pad and A B X Y on
-    //   16:9 to 20:9 screens; hide or move them in the layout editor like any other
-    g_c[C_L3] = (ctl){ g_c[C_STICK].cx, g_c[C_STICK].cy - 0.22f * s, 0.05f * s, OVL_G_L3, 1, DM_BTN_LS };
-    g_c[C_R3] = (ctl){ g_c[C_RSTICK].cx, g_c[C_RSTICK].cy - 0.21f * s, 0.05f * s, OVL_G_R3, 1, DM_BTN_RS };
     // touch-first games (Legends: Arceus): only the movement stick and − / + on screen; everything else is touch on the game itself (touch_ui_event's gestures, touch_menu.c)
     if (GESTURES_ON) for (int c = C_RSTICK; c < NCTL; c++) if (c != C_PLUS && c != C_MINUS && c != C_MENU) g_c[c].shown = 0;
     if (!g_rstick_on) { g_rknob_x = g_c[C_RSTICK].cx; g_rknob_y = g_c[C_RSTICK].cy; }
@@ -416,7 +441,20 @@ static dm_ovl_item *add(dm_ovl_item *it, int *n, int max, float cx, float cy, fl
 }
 // a glossy bubble: shadow, dark rim, body, glow below, a gloss spot, a bright rim; the label on top
 static void bubble(dm_ovl_item *it, int *n, int max, const ctl *c, int on, int teal, float a) {
-    float r = on ? c->r * 0.95f : c->r, x = c->cx, y = c->cy, th = g_h / 1080.0f;
+    float r = on ? c->r * 0.94f : c->r, x = c->cx, y = c->cy, th = g_h / 1080.0f;
+    if (IS_EASTWARD) {
+        int atk = c->glyph == OVL_G_Y;
+        int br = atk ? 56 : 26, bg = atk ? 44 : 26, bb = atk ? 16 : 30;
+        if (on) { br = 246; bg = 198; bb = 52; }
+        add(it, n, max, x, y + r * 0.06f, r * 1.03f, OVL_DISC, 0, 0, 0, 0.35f * a);
+        add(it, n, max, x, y, r, OVL_DISC, 18, 16, 14, 0.78f * a);
+        add(it, n, max, x, y, r * 0.91f, OVL_DISC, br, bg, bb, (on ? 0.90f : 0.68f) * a);
+        dm_ovl_item *o = add(it, n, max, x, y, r * 0.91f, OVL_RING, 250, 212, 74, (atk || on ? 0.96f : 0.78f) * a);
+        if (o) o->ring = clampf((atk ? 3.4f : 2.5f) * th / (r * 0.91f), 0.02f, 0.2f);
+        o = add(it, n, max, x, y, r, OVL_DISC, 0, 0, 0, 0);
+        if (o) { o->glyph = c->glyph; o->gscale = atk ? 0.62f : 0.60f; o->galpha = a; }
+        return;
+    }
     int br = teal ? 30 : 38, bg = teal ? 170 : 128, bb = teal ? 150 : 200;
     if (on) { br += 70; bg += 60; bb += 40; }
     add(it, n, max, x, y + r * 0.06f, r * 1.02f, OVL_DISC, 5, 30, 60, 0.35f * a);
@@ -450,6 +488,16 @@ static void menu_icon(dm_ovl_item *it, int *n, int max, const ctl *c, float a) {
 // the stick: a ring with an inner ring, and a glossy knob
 static void compass(dm_ovl_item *it, int *n, int max, float a, float g_stick_x, float g_stick_y, float g_knob_x, float g_knob_y, float r) {   // (base, knob, radius)
     float th = g_h / 1080.0f, kr = r * 0.42f;
+    if (IS_EASTWARD) {
+        add(it, n, max, g_stick_x, g_stick_y, r, OVL_DISC, 24, 22, 18, 0.46f * a);
+        dm_ovl_item *o = add(it, n, max, g_stick_x, g_stick_y, r, OVL_RING, 250, 212, 74, 0.85f * a); if (o) o->ring = clampf(2.6f * th / r, 0.01f, 0.2f);
+        o = add(it, n, max, g_stick_x, g_stick_y, r * 0.78f, OVL_RING, 250, 212, 74, 0.30f * a); if (o) o->ring = clampf(1.6f * th / (r * 0.78f), 0.01f, 0.2f);
+        add(it, n, max, g_knob_x, g_knob_y + kr * 0.12f, kr, OVL_DISC, 0, 0, 0, 0.28f * a);
+        add(it, n, max, g_knob_x, g_knob_y, kr, OVL_DISC, 245, 196, 48, 0.90f * a);
+        add(it, n, max, g_knob_x, g_knob_y - kr * 0.28f, kr * 0.55f, OVL_DISC, 255, 248, 210, 0.28f * a);
+        o = add(it, n, max, g_knob_x, g_knob_y, kr, OVL_RING, 255, 240, 160, 0.95f * a); if (o) o->ring = clampf(2.4f * th / kr, 0.02f, 0.3f);
+        return;
+    }
     add(it, n, max, g_stick_x, g_stick_y, r, OVL_DISC, 30, 100, 165, 0.45f * a);
     dm_ovl_item *o = add(it, n, max, g_stick_x, g_stick_y, r, OVL_RING, 190, 235, 255, 0.80f * a); if (o) o->ring = clampf(2.6f * th / r, 0.01f, 0.2f);
     o = add(it, n, max, g_stick_x, g_stick_y, r * 0.80f, OVL_RING, 190, 235, 255, 0.35f * a); if (o) o->ring = clampf(1.6f * th / (r * 0.8f), 0.01f, 0.2f);
@@ -510,7 +558,7 @@ int front_overlay(dm_ovl_item *it, int max, int width, int height) {
             bubble(it, &n, max, &g_c[c], on, 0, al);
             if (c >= C_UP && c <= C_RIGHT && al == 1.0f) { float r = g_c[c].r, ox = c == C_LEFT ? -0.42f : c == C_RIGHT ? 0.42f : 0, oy = c == C_UP ? -0.42f : c == C_DOWN ? 0.42f : 0;
                 add(it, &n, max, g_c[c].cx + ox * r, g_c[c].cy + oy * r, r * 0.22f, OVL_DISC, 255, 255, 255, 0.9f); } }
-        compass(it, &n, max, g_stick_on ? 1.0f : idle ? ia : 0.75f, g_stick_x, g_stick_y, g_knob_x, g_knob_y, g_c[C_STICK].r);
+        if (!float_on() || g_stick_on) compass(it, &n, max, g_stick_on ? 1.0f : idle ? ia : 0.75f, g_stick_x, g_stick_y, g_knob_x, g_knob_y, g_c[C_STICK].r);
         if (g_c[C_RSTICK].shown) compass(it, &n, max, g_rstick_on ? 1.0f : idle ? ia : faint ? 0.25f : 0.75f, g_c[C_RSTICK].cx,   // faint while unused: it and the D-pad sit over the dialogue box
              g_c[C_RSTICK].cy, g_rknob_x, g_rknob_y, g_c[C_RSTICK].r);
         for (int i = 0; i < n; i++) { it[i].a *= g_opacity; it[i].galpha *= g_opacity; }

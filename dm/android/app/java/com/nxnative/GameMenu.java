@@ -63,10 +63,11 @@ public final class GameMenu {
 
     // ---------- look ----------
     private static final int BG = 0xF0121419, CARD = 0xFF1C1F26, CARD_LINE = 0xFF2A2E37, TEXT = 0xFFF2F3F5, SUB = 0xFF9AA0AB, CHIP = 0xFF262A33, WARN = 0xFFFFB74D;
-    private static int accent(Activity a) {   // the game's colour: Sword blue, Shield magenta, Violet purple, Scarlet red
+    private static int accent(Activity a) {   // the game's colour: bright Eastward yellow, Sword blue, Shield magenta, Violet purple, Scarlet red
         String id = GameSettings.game(a)[0].toUpperCase(java.util.Locale.ROOT);
-        return id.startsWith("0100ABF") ? 0xFF2E9BFF : id.startsWith("01008DB") ? 0xFFE0306E : id.startsWith("01008F6") ? 0xFF9B5CFF : id.startsWith("0100A3D") ? 0xFFFF4D3D : id.startsWith("010071B") ? 0xFFE85A38 : 0xFF3DDC97;
+        return id.startsWith("0100ABF") ? 0xFF2E9BFF : id.startsWith("01008DB") ? 0xFFE0306E : id.startsWith("01008F6") ? 0xFF9B5CFF : id.startsWith("0100A3D") ? 0xFFFF4D3D : id.startsWith("010071B") ? 0xFFF5C428 : 0xFF3DDC97;
     }
+    private static int ink(Activity a) { return accent(a) == 0xFFF5C428 ? 0xFF1A1710 : Color.WHITE; }
     private static int dp(Activity a, float v) { return Math.round(v * a.getResources().getDisplayMetrics().density); }
     private static GradientDrawable round(int color, float r, int stroke, int strokeColor) {
         GradientDrawable g = new GradientDrawable(); g.setColor(color); g.setCornerRadius(r); if (stroke > 0) g.setStroke(stroke, strokeColor); return g;
@@ -80,7 +81,7 @@ public final class GameMenu {
     private static Dialog dlg; private static Activity act; private static LinearLayout rail, body; private static ScrollView scroll; private static TextView status;
     private static String page = "display"; private static final Set<String> RESTART = new HashSet<>();   // settings changed that apply from the next start
     private static final String[][] TABS = { { "display", "Display" }, { "perf", "Performance" }, { "controls", "Controls" }, { "mods", "Mods" }, { "saves", "Saves" },
-                                             { "online", "Online" }, { "system", "System" }, { "about", "About" } };
+                                             { "system", "System" }, { "about", "About" } };
 
     // android_main.c: what 0 = the menu, 1 = the controller buttons
     public static void show(Activity a, int what) { a.runOnUiThread(() -> open(a, what == 1 ? "remap" : null)); }
@@ -132,7 +133,7 @@ public final class GameMenu {
         String top = p.equals("remap") ? "controls" : p.equals("driver") ? "system" : p.equals("order") ? "mods" : p;
         for (String[] tb : TABS) {
             boolean on = tb[0].equals(top);
-            TextView r = text(a, t(a, tb[1]), 15, on ? TEXT : SUB, on); r.setPadding(dp(a, 14), dp(a, 11), dp(a, 10), dp(a, 11));
+            TextView r = text(a, t(a, tb[1]), 15, on ? (accent(a) == 0xFFF5C428 ? accent(a) : TEXT) : SUB, on); r.setPadding(dp(a, 14), dp(a, 11), dp(a, 10), dp(a, 11));
             r.setBackground(on ? round((accent(a) & 0x00FFFFFF) | 0x38000000, dp(a, 12), 0, 0) : null);
             r.setOnClickListener(v -> { say(""); capture = null; go(tb[0]); });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.bottomMargin = dp(a, 4); rail.addView(r, lp);
@@ -169,7 +170,7 @@ public final class GameMenu {
         c.addView(r); return r;
     }
     private static TextView pill(Activity a, String label, boolean on) {
-        TextView p = text(a, label, 13, on ? Color.WHITE : SUB, true); p.setPadding(dp(a, 14), dp(a, 5), dp(a, 14), dp(a, 5));
+        TextView p = text(a, label, 13, on ? ink(a) : SUB, true); p.setPadding(dp(a, 14), dp(a, 5), dp(a, 14), dp(a, 5));
         p.setBackground(on ? round(accent(a), dp(a, 14), 0, 0) : round(CHIP, dp(a, 14), 1, CARD_LINE)); return p;
     }
     // a choice: { value, chip label, what it does }; the chosen one's line under the chips. Applied at once when the engine can (nativeSetting), else tagged "Applies next start"
@@ -182,7 +183,7 @@ public final class GameMenu {
         boolean found = false; for (String[] o : opts) if (o[0].equals(cur)) found = true;
         for (String[] o : opts) {
             boolean on = o[0].equals(cur) || (!found && o == opts[0]);
-            TextView ch = text(a, o[1], 14, on ? Color.WHITE : TEXT, on); ch.setPadding(dp(a, 16), dp(a, 8), dp(a, 16), dp(a, 8));
+            TextView ch = text(a, o[1], 14, on ? ink(a) : TEXT, on); ch.setPadding(dp(a, 16), dp(a, 8), dp(a, 16), dp(a, 8));
             ch.setBackground(on ? round(accent(a), dp(a, 18), 0, 0) : round(CHIP, dp(a, 18), 1, CARD_LINE));
             ch.setOnClickListener(v -> { if (!o[0].equals(GameSettings.get(a, key))) set(a, key, o[0]); redraw(); });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.rightMargin = dp(a, 8); chips.addView(ch, lp);
@@ -227,7 +228,7 @@ public final class GameMenu {
     }
     private static void note(Activity a, String s) { TextView n = text(a, s, 13, SUB, false); n.setPadding(dp(a, 6), dp(a, 2), dp(a, 6), dp(a, 10)); body.addView(n); }
     private static TextView button(Activity a, LinearLayout parent, String label, boolean primary, Runnable r) {
-        TextView b = text(a, label, 14, primary ? Color.WHITE : TEXT, true); b.setGravity(Gravity.CENTER); b.setPadding(dp(a, 16), dp(a, 9), dp(a, 16), dp(a, 9));
+        TextView b = text(a, label, 14, primary ? ink(a) : TEXT, true); b.setGravity(Gravity.CENTER); b.setPadding(dp(a, 16), dp(a, 9), dp(a, 16), dp(a, 9));
         b.setBackground(primary ? round(accent(a), dp(a, 18), 0, 0) : round(CHIP, dp(a, 18), 1, CARD_LINE)); b.setOnClickListener(v -> r.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.rightMargin = dp(a, 8); lp.topMargin = dp(a, 8); parent.addView(b, lp); return b;
     }
@@ -267,7 +268,7 @@ public final class GameMenu {
         heading(a, t(a, "Screen"));
         choice(a, "DM_ASPECT", t(a, "Picture"), new String[][] { { "", "16:9", t(a, "16:9, as the game is made") }, { "fill", t(a, "Fill"), t(a, "Fill the screen (stretched)") },
                                                                     { "20:9", "20:9", t(a, "20:9, for a widescreen mod") },
-            { "wide", t(a, "Widescreen"), t(a, "Widescreen: the game's camera made as wide as your screen, nothing stretched (Sword / Shield 1.3.2; the HUD is stretched)") } });
+            { "wide", t(a, "Widescreen"), t(a, "Widescreen: expand the camera view to fill your screen (experimental)") } });
         String rec = GameSettings.profile(a)[6].equals("sgsr") ? "SGSR" : t(a, "Sharp");
         choice(a, "DM_SCALER", t(a, "Upscaling"), new String[][] { { "", t(a, "Auto"), t(a, "Auto: this phone gets %s", rec) },
             { "sharp", t(a, "Sharp"), t(a, "Sharp: the picture upscaled with sharpening (lighter settings keep their detail)") },
@@ -338,9 +339,10 @@ public final class GameMenu {
         choice(a, "DM_RSTICK_SENS", t(a, "Camera sensitivity"), new String[][] { { "50", "50 %", t(a, "Slower camera: the right stick and the touch camera turn less") }, { "75", "75 %", "" },
             { "", "100 %", t(a, "As on the Switch") }, { "125", "125 %", "" }, { "150", "150 %", t(a, "Faster camera: full speed with less of the stick") }, { "200", "200 %", "" } });
         heading(a, t(a, "Touch controls"));
-        // the sticks (touch_ui.c float_on): fixed where the layout puts them, or floating (the left one comes to the thumb; the right half drags the camera)
-        choice(a, "DM_TOUCH_STICKS", t(a, "Sticks"), new String[][] { { "", t(a, "Fixed"), t(a, "Fixed: the sticks stay where they are drawn, as on Joy-Cons") },
-            { "floating", t(a, "Floating"), t(a, "Floating: touch anywhere on the left half to move (the stick comes to your thumb); drag on the right half to turn the camera") } });
+        // the sticks (touch_ui.c float_on): floating by default on Eastward (touch anywhere on the left half; appears while held), or fixed
+        choice(a, "DM_TOUCH_STICKS", t(a, "Sticks"), new String[][] {
+            { "", t(a, "Floating (Auto)"), t(a, "Floating: touch anywhere on the left half to move (stick appears while touching); drag on the right half if camera is used") },
+            { "fixed", t(a, "Fixed"), t(a, "Fixed: the stick stays fixed at the bottom left") } });
         // L3 / R3 (pressing the sticks, touch_ui.c): off by default, Sword and Shield hardly use them (the left stick whistles in the Wild Area)
         choice(a, "DM_TOUCH_L3R3", t(a, "L3 / R3 buttons"), new String[][] { { "", t(a, "Off"), t(a, "Off: no L3 / R3 on screen (a controller's stick buttons still work)") },
                                                                              { "on", t(a, "On"), t(a, "On: L3 and R3 above the sticks (move them with Move the touch controls)") } });
@@ -478,7 +480,7 @@ public final class GameMenu {
     static File activeSave(Activity a, File files) {
         try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(new File(files, "save_place.txt")))) {
             String l = r.readLine();
-            if (l != null && l.trim().equals("shared")) return new File("/storage/emulated/0/Documents/Galar Native/" + GameSettings.game(a)[0].toUpperCase(java.util.Locale.ROOT) + "/save");
+            if (l != null && l.trim().equals("shared")) return new File("/storage/emulated/0/Documents/Eastward Native/" + GameSettings.game(a)[0].toUpperCase(java.util.Locale.ROOT) + "/save");
         } catch (java.io.IOException e) { }
         return new File(files, "save");
     }
@@ -489,7 +491,7 @@ public final class GameMenu {
         action(a, t(a, "Import save data"), t(a, "Your current save is kept as a backup."), () -> pick(a, Intent.ACTION_OPEN_DOCUMENT, null, REQ_IMPORT));
         // where the save lives (android_main.c save_place, Arceus-Native-Android#8): Documents for a sync tool; copied over at the next start, the earlier save there kept as a backup
         choice(a, "DM_SAVE_SHARED", t(a, "Save folder"), new String[][] { { "", t(a, "App folder"), t(a, "App folder: Android/data, as before") },
-            { "1", t(a, "Documents"), t(a, "Documents/Galar Native/%s/save, for sync tools such as Syncthing. Your save is copied there at the next start; anything already there is kept as a backup. Needs All files access", GameSettings.game(a)[0].toUpperCase(java.util.Locale.ROOT)) } });
+            { "1", t(a, "Documents"), t(a, "Documents/Eastward Native/%s/save, for sync tools such as Syncthing. Your save is copied there at the next start; anything already there is kept as a backup. Needs All files access", GameSettings.game(a)[0].toUpperCase(java.util.Locale.ROOT)) } });
     }
     // Online room (hle_relay.c, dm/server): local play with players elsewhere through a room server someone hosts (their own Railway service, or any PC); everyone enters the
     // same server address and room code. Applies from the next start; mods stay off for local play, as on Wi-Fi
@@ -524,9 +526,9 @@ public final class GameMenu {
         String ver = ""; try { ver = a.getPackageManager().getPackageInfo(a.getPackageName(), 0).versionName; } catch (Exception e) { }
         String dl = "https://" + app[1] + "/releases";
         heading(a, app[0] + (ver == null || ver.isEmpty() ? "" : " v" + ver));
-        LinearLayout c = card(a); titleRow(a, c, official ? t(a, "Official build") : t(a, "Unofficial build"), null);
+        LinearLayout c = card(a); titleRow(a, c, official ? t(a, "Official build") : t(a, "Custom SVG & Mali Edition"), null);
         c.addView(text(a, official ? t(a, "Signed with the %s release key.", app[0])
-                                   : t(a, "This copy was not signed by the %s project (signer %s). It may have been changed.", app[0], sg.length > 0 && sg[0].length() >= 16 ? sg[0].substring(0, 16) : "?"),
+                                   : t(a, "Built for Eastward Native on Android (Mali Vulkan + custom SVG touch overlay)."),
                        13, SUB, false));
         TextView link = text(a, t(a, "Official downloads: %s", dl), 13, accent(a), false); link.setPadding(0, dp(a, 6), 0, 0);
         link.setOnClickListener(v -> { try { a.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(dl))); } catch (Exception e) { } });
@@ -535,7 +537,7 @@ public final class GameMenu {
         String own = asset(a, "licenses/LICENSE.txt"); StringBuilder who = new StringBuilder();
         for (String l : own.split("\n")) { String s_ = l.trim();   // (not the GPL text's own copyright line, and each holder once: NOTICE and LICENSE-MIT both name them)
             if (s_.startsWith("Copyright") && !s_.contains("Free Software Foundation") && who.indexOf(s_) < 0) who.append(s_).append('\n'); }
-        if (who.length() == 0) who.append("Copyright (c) 2026 jhaizhou (d2r-mobile, nxnative)\nCopyright (c) 2026 the Galar Native (formerly PKShield Android) contributors\n");
+        if (who.length() == 0) who.append("Copyright (c) 2026 jhaizhou (d2r-mobile, nxnative)\nCopyright (c) 2026 Eastward Native contributors\n");
         heading(a, t(a, "Credits"));
         LinearLayout cc = card(a); cc.addView(text(a, who.toString().trim(), 14, TEXT, false));
         TextView mit = text(a, t(a, "Free software under the GNU GPL, version 3 or later (older parts also MIT). This notice must stay with every copy, and the source of every release is public."), 13, SUB, false); mit.setPadding(0, dp(a, 6), 0, 0); cc.addView(mit);
@@ -548,8 +550,6 @@ public final class GameMenu {
         }
     }
     private static void system(Activity a) {
-        heading(a, t(a, "Graphics driver"));
-        action(a, t(a, "Graphics driver"), DriverPackages.label(DriverPackages.current(a)), () -> go("driver"));
         heading(a, t(a, "Language"));
         String[][] l = new String[T.LANGS.length][]; for (int i = 0; i < l.length; i++) l[i] = new String[] { T.LANGS[i][0], i == 0 ? t(a, "Auto") : T.LANGS[i][1], i == 0 ? t(a, "Auto (the phone's language)") : "" };
         choice(a, "DM_LANG", t(a, "Language"), l);

@@ -6,7 +6,7 @@ program_id	010071B00F63A000
 
 # ---- App ----
 app_repo	github.com/Itsneslab/Eastward-Native-Android
-app_icon	e85a38 141a24
+app_icon	f5c428 161820
 app_name	Eastward Native
 name	Eastward
 ipa	Eastward.ipa
