@@ -17,16 +17,27 @@ PY_SKIP = ('test', 'idlelib', 'tkinter', 'turtledemo', 'ensurepip', 'pydoc_data'
 DM_PARTS = ['games/game.py', 'tools/patch_nso.py', 'gfx/tools', 'ios/tools/ios_metal.py', 'android/tools']   # and every game profile (setup names the other game when given its dump)
 sys.path.insert(0, os.path.join(DM, 'games')); import game as _game
 
-def png(size, top=(220, 40, 50), bg=(24, 32, 64)):   # the app's icon, drawn here (no game artwork ships): a ball, its top half coloured (the profile's app_icon), on a dark ground
+def png(size, top=(232, 90, 56), bg=(20, 26, 36)):   # the app's icon, drawn here (no game artwork ships): an Eastward emblem badge on a dark ground
+    gold = (246, 196, 83)
+    cream = (252, 232, 178)
+    inner = (24, 30, 42)
     px = []
     for y in range(size):
         row = bytearray([0])
         for x in range(size):
-            dx, dy = (x + 0.5) / size - 0.5, (y + 0.5) / size - 0.5; d = (dx * dx + dy * dy) ** 0.5
+            u, v = (x + 0.5) / size - 0.5, (y + 0.5) / size - 0.5
+            r = (u * u * u * u + v * v * v * v) ** 0.25
             c = bg
-            if d < 0.40: c = top if dy < -0.03 else (245, 245, 245) if dy > 0.03 else (30, 30, 36)
-            if d < 0.11: c = (30, 30, 36)
-            if d < 0.075: c = (250, 250, 250)
+            if r < 0.43:
+                c = top if r < 0.40 else gold
+            if r < 0.34:
+                c = inner
+            in_e = ((-0.14 <= u <= -0.05 and -0.18 <= v <= 0.18) or
+                    (-0.14 <= u <= 0.15 and -0.18 <= v <= -0.10) or
+                    (-0.14 <= u <= 0.11 and -0.04 <= v <= 0.04) or
+                    (-0.14 <= u <= 0.15 and 0.10 <= v <= 0.18))
+            if in_e:
+                c = cream if -0.16 <= v <= 0.0 else gold
             row += bytes(c)
         px.append(bytes(row))
     raw = zlib.compress(b''.join(px), 9)

@@ -186,13 +186,13 @@ public final class SetupActivity extends Activity {
         // the first start: the app's name and the games it runs; later, the game this screen sets up
         TextView title = text(root, first && many ? getApplicationInfo().loadLabel(getPackageManager()).toString() : gameName(), 26, 0xFFF2F3F5, true); title.setGravity(Gravity.CENTER);
         title.setPadding(0, px(10), 0, 0);
-        if (!official) { TextView u = text(root, T.t(this, "Community build (GPL-3.0, based on PKShield-Android / nxnative)."), 12, 0xFFA9AFBA, false); u.setGravity(Gravity.CENTER); }
+        if (!official) { TextView u = text(root, T.t(this, "Community build (GPL-3.0, based on nxnative)."), 12, 0xFFA9AFBA, false); u.setGravity(Gravity.CENTER); }
         TextView note = text(root, first ? T.t(this, "Welcome! To play, set up %s from your own Switch dump. It takes three steps.", many ? gamesNamed() : gameName())
                                            + "\n" + T.t(this, "No game files or keys come with this app; yours never leave the phone.")
                                          : T.t(this, "Set the game up from your own dump. No game files or keys come with this app; yours never leave the phone."), 14, 0xFFA9AFBA, false);
         note.setGravity(Gravity.CENTER); note.setPadding(0, px(6), 0, px(6));
-        // the upstream project attribution (GPL-3.0)
-        TextView by = text(root, "PKShield-Android / nxnative", 13, acc, false); by.setGravity(Gravity.CENTER); by.setPadding(0, 0, 0, px(6));
+        // repository link from assets/app
+        TextView by = text(root, GameSettings.app(this)[1], 13, acc, false); by.setGravity(Gravity.CENTER); by.setPadding(0, 0, 0, px(6));
         by.setPaintFlags(by.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
         by.setOnClickListener(v -> { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://" + GameSettings.app(this)[1]))); } catch (Exception e) { } });
         LinearLayout c1 = card(root, "1", T.t(this, "Your game files"), acc);
@@ -263,7 +263,7 @@ public final class SetupActivity extends Activity {
     private String gamesNamed() { List<String> n = new ArrayList<>(); for (String[] g : GameSettings.games(this)) n.add(g[1]); return String.join(" " + T.t(this, "or") + " ", n); }
     // the game's colour: the launcher's cards, this screen's buttons
     static int accent(String id) { String up = id.toUpperCase(java.util.Locale.ROOT);
-        return up.startsWith("0100ABF") ? 0xFF2E9BFF : up.startsWith("01008DB") ? 0xFFE0306E : up.startsWith("01008F6") ? 0xFF9B5CFF : up.startsWith("0100A3D") ? 0xFFFF4D3D : 0xFF3DDC97; }
+        return up.startsWith("010071B") ? 0xFFE85A38 : up.startsWith("0100ABF") ? 0xFF2E9BFF : up.startsWith("01008DB") ? 0xFFE0306E : up.startsWith("01008F6") ? 0xFF9B5CFF : up.startsWith("0100A3D") ? 0xFFFF4D3D : 0xFF3DDC97; }
     private TextView text(LinearLayout parent, String s, float size, int color, boolean bold) {
         TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(color); if (bold) t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         parent.addView(t, new LinearLayout.LayoutParams(-1, -2)); return t;
@@ -508,6 +508,7 @@ public final class SetupActivity extends Activity {
     private String gameFileProblem(Uri u, String name) {
         String n = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
         if (n.endsWith(".nsz") || n.endsWith(".xcz")) return T.t(this, "%s is compressed (NSZ): decompress it to .nsp / .xci first, then choose that.", name);
+        if (n.endsWith(".romfs")) return T.t(this, "%s is a .romfs pack from an older build; this app needs your Switch .nsp or .xci file and prod.keys.", name);
         if (n.endsWith(".keys") || n.endsWith(".txt")) return T.t(this, "%s is not a game file: choose it under Your keys.", name);
         byte[] h = new byte[0x10000]; int got = 0;
         try (InputStream in = getContentResolver().openInputStream(u)) {
