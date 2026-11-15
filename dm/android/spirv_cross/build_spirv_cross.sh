@@ -3,7 +3,7 @@
 # and for Linux (out/spirv-cross, the reference run). The setup uses it for shader reflection (--msl --reflect), as on the Mac.
 # Usage: build_spirv_cross.sh [tag]   (default: the newest vulkan-sdk-* tag). Env: NDK (default ~/aot/android-ndk-r27c), API (default 31)
 set -e
-HERE=$(cd "$(dirname "$0")" && pwd); NDK=${NDK:-$HOME/aot/android-ndk-r27c}; API=${API:-31}
+HERE=$(cd "$(dirname "$0")" && pwd); NDK=${NDK:-$HOME/aot/android-ndk-r27c}; API=${API:-29}
 TC=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin
 URL=https://github.com/KhronosGroup/SPIRV-Cross.git
 TAG=${1:-$(git ls-remote --tags --refs "$URL" 'vulkan-sdk-*' | sed 's#.*refs/tags/##' | sort -V | tail -1)}

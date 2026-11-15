@@ -1,0 +1,46 @@
+# Game profile for Eastward (Nintendo Switch, SDK 12, Title ID 010071B00F63A000)
+
+# ---- Identity ----
+title_id	010071B00F63A000
+program_id	010071B00F63A000
+
+# ---- App ----
+app_repo	github.com/Itsneslab/Eastward-Native-Android
+app_icon	e85a38 141a24
+app_name	Eastward Native
+name	Eastward
+ipa	Eastward.ipa
+app_category	public.app-category.games
+
+# ---- Versions ----
+build	v0	1.0.0	main=fde22f70f9f05a68f15ba5767bf6215d	subsdk1=3019c6c5a7da506e82ca2dee72b07651	sdk=2217a4a3c1f3c883278de72f8b008224
+package	v0
+shader_versions	v0
+
+# ---- Files ----
+# not loaded, main takes nothing from them the host does not supply: subsdk0 (NintendoSDK_OpenGL)
+modules	main subsdk1 sdk
+romfs_marker	game/audio/d8ef0cabb7fdb2fdf7595daa87ab0f8a/Build/Switch/Music.bank
+zip_store	.bank:.g:.png:.metallib
+
+# ---- Memory ----
+# main sets a heap of at most the pool − 64 MB: a 3328 MB heap region
+mem_reserve	0x100000000
+mem_alias	0x10000000
+mem_stack	0x10000000
+app_pool	0xCD500000
+# the NPDM declares 0 MB of system resource: IsVirtualAddressMemoryEnabled is false, as on Horizon (Big Brain Academy: Brain vs. Brain sets a heap only then)
+sys_resource	0x0
+
+# ---- Shader split ----
+shader_groups	/game/=game
+shader_glslc_capture	on
+shader_note	Eastward shaders
+
+# ---- NVN driver constant segments (standard NVN 55+ / translator built-in layout) ----
+nvn_tex_base	0x20
+nvn_tex_slots	32
+nvn_samp_base	0x568
+nvn_img_base	0x120
+nvn_img_slots	8
+nvn_ssbo_bases	vs=0x110 ps=0x510 cs=0x310

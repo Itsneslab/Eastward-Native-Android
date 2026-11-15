@@ -29,14 +29,14 @@ final class GameSettings {
                     String l; while ((l = r.readLine()) != null) { String[] a = l.split("\t"); if (a.length >= 3) g.add(a); } } catch (Exception e) { }
                 if (!g.isEmpty()) break;
             }
-            if (g.isEmpty()) g.add(new String[] { "01008DB008C2C000", "Pokémon Shield", "PokemonShield" });
+            if (g.isEmpty()) g.add(new String[] { "010071B00F63A000", "Eastward", "Eastward" });
             games = g;
         }
         return games;
     }
     static File root(Context c) { return c.getExternalFilesDir(null); }
-    // the game version the app runs (the profile's build: Sword / Shield 1.3.2, Violet 4.0.0), the fourth column of assets/games
-    static String version(Context c) { String[] g = game(c); return g.length > 3 ? g[3] : "1.3.2"; }
+    // the game version the app runs (the profile's build: Eastward 1.0.0, Sword / Shield 1.3.2, Violet 4.0.0), the fourth column of assets/games
+    static String version(Context c) { String[] g = game(c); return g.length > 3 ? g[3] : "1.0.0"; }
     static String[] game(Context c) {
         String id = "";
         try (BufferedReader r = new BufferedReader(new FileReader(new File(root(c), "current_game")))) { String l = r.readLine(); if (l != null) id = l.trim(); } catch (IOException e) { }
@@ -75,7 +75,7 @@ final class GameSettings {
     // the app's own name and where its official releases are (assets/app, from the base game's profile: Galar Native, Paldea Native)
     static String[] app(Context c) {
         try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getAssets().open("app"), "UTF-8"))) { String[] a = r.readLine().split("\t"); if (a.length >= 2) return a; } catch (Exception e) { }
-        return new String[] { "Galar Native", "github.com/simipoB/Galar-Native-Android" };
+        return new String[] { "Eastward Native", "github.com/Itsneslab/Eastward-Native-Android" };
     }
     static boolean isShield(Context c) { return "01008DB008C2C000".equalsIgnoreCase(game(c)[0]); }
     // the games the built-in 60 fps patch knows (loader.c FPS_SITES: Pokémon Shield and Sword 1.3.2)

@@ -12,10 +12,12 @@
 //   launcher icon itself is fixed by the APK, which carries no game artwork.
 package com.nxnative;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.graphics.Bitmap;
@@ -184,17 +186,18 @@ public final class SetupActivity extends Activity {
         // the first start: the app's name and the games it runs; later, the game this screen sets up
         TextView title = text(root, first && many ? getApplicationInfo().loadLabel(getPackageManager()).toString() : gameName(), 26, 0xFFF2F3F5, true); title.setGravity(Gravity.CENTER);
         title.setPadding(0, px(10), 0, 0);
-        if (!official) { TextView u = text(root, unofficial(), 13, 0xffff5252, false); u.setGravity(Gravity.CENTER); }
+        if (!official) { TextView u = text(root, T.t(this, "Community build (GPL-3.0, based on PKShield-Android / nxnative)."), 12, 0xFFA9AFBA, false); u.setGravity(Gravity.CENTER); }
         TextView note = text(root, first ? T.t(this, "Welcome! To play, set up %s from your own Switch dump. It takes three steps.", many ? gamesNamed() : gameName())
                                            + "\n" + T.t(this, "No game files or keys come with this app; yours never leave the phone.")
                                          : T.t(this, "Set the game up from your own dump. No game files or keys come with this app; yours never leave the phone."), 14, 0xFFA9AFBA, false);
         note.setGravity(Gravity.CENTER); note.setPadding(0, px(6), 0, px(6));
-        // the author, linked to the official page (a copy uploaded elsewhere keeps it unless the APK is changed, and a changed APK says "Unofficial build" above)
-        TextView by = text(root, "SimipoB", 13, acc, false); by.setGravity(Gravity.CENTER); by.setPadding(0, 0, 0, px(6));
+        // the upstream project attribution (GPL-3.0)
+        TextView by = text(root, "PKShield-Android / nxnative", 13, acc, false); by.setGravity(Gravity.CENTER); by.setPadding(0, 0, 0, px(6));
         by.setPaintFlags(by.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
-        by.setOnClickListener(v -> { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/simipoB/Galar-Native-Android"))); } catch (Exception e) { } });
+        by.setOnClickListener(v -> { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://" + GameSettings.app(this)[1]))); } catch (Exception e) { } });
         LinearLayout c1 = card(root, "1", T.t(this, "Your game files"), acc);
-        text(c1, T.t(this, "The base game (.nsp or .xci), the %s update and any DLC. You can choose them all at once.", GameSettings.version(this)), 13, 0xFFA9AFBA, false);
+        String ver = GameSettings.version(this);
+        text(c1, "1.0.0".equals(ver) ? T.t(this, "The game file (.nsp or .xci, plus any update or DLC).") : T.t(this, "The base game (.nsp or .xci), the %s update and any DLC. You can choose them all at once.", ver), 13, 0xFFA9AFBA, false);
         gameText = text(c1, "", 14, 0xFFF2F3F5, false); gameText.setPadding(0, px(8), 0, px(8));
         LinearLayout r1 = hrow(c1); pill(r1, T.t(this, "Choose game files"), acc, 0xFFFFFFFF, v -> pick(PICK_GAME, true));
         clear = pill(r1, T.t(this, "Clear"), 0xFF2A2E37, 0xFFC4C9D2, v -> clearGames());
@@ -446,8 +449,17 @@ public final class SetupActivity extends Activity {
             status.setText(T.t(this, "Allow access to all files so the app can read your dump where it is (it is several GB; nothing is copied)."));
             try { startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName()))); return; }
             catch (android.content.ActivityNotFoundException e) { pickAfterAccess = false; } }
+        if (what == PICK_GAME && Build.VERSION.SDK_INT < 30 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED && !askedAccess) {
+            askedAccess = true;
+            requestPermissions(new String[] { Manifest.permission.READ_EXTERNAL_STORAGE }, 9001);
+            return;
+        }
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.setType("*/*"); i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multi);
         startActivityForResult(i, what);
+    }
+    @Override public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        if (req == 9001) pick(PICK_GAME, true);
     }
     @Override protected void onActivityResult(int req, int res, Intent data) {
         if (res != RESULT_OK) return;
@@ -720,9 +732,8 @@ public final class SetupActivity extends Activity {
         offerAnyway = false; anyway.setVisibility(android.view.View.GONE);
         String mixed = mixedGames(); if (mixed != null) { status.setText(mixed); return; }
         for (String g : games) if (!new File(g).canRead()) { status.setText(T.t(this, "Could not read %s.", new File(g).getName()) + " " + T.t(this, "Tap Clear and choose your files again.")); return; }
-        // Sword and Shield run on update 1.3.2 only: a base game named [v0] chosen without any update is said now, not after the unpacking (only for .nsp files named
-        //   with their title IDs: an .xci, or a dump named otherwise, can hold the update, and the setup checks the version itself)
-        { boolean nsp = true, named = true, hasUpd = false, v0 = false;
+        // Games whose target build is an update (e.g. Sword/Shield 1.3.2): catch base-only [v0] .nsp early, unless the target version itself is 1.0.0 (e.g. Eastward v0)
+        if (!"1.0.0".equals(GameSettings.version(this))) { boolean nsp = true, named = true, hasUpd = false, v0 = false;
           for (String f : games) { String n = new File(f).getName().toLowerCase(java.util.Locale.ROOT); long t = titleId(f);
               nsp &= n.endsWith(".nsp"); named &= t >= 0; if (t >= 0 && (t & 0xFFF) == 0x800) hasUpd = true; if (t >= 0 && (t & 0xFFF) == 0 && n.contains("[v0]")) v0 = true; }
           if (nsp && named && v0 && !hasUpd) { status.setText(T.t(this, "Your files are the base game only: this app needs the %s update too. Choose the update (.nsp, its title ID ends in 800) as well.", GameSettings.version(this))); return; } }

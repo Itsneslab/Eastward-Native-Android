@@ -14,7 +14,7 @@
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd); A=$REPO/dm/android
 WORK=${WORK:-$HOME/psa-build}; mkdir -p "$WORK"; cd "$WORK"
-GAME=${GAME:-01008DB008C2C000}; API=31;   # GAME=01008F6008C5E000: Paldea Native (Scarlet + Violet); default Galar Native (Sword + Shield)
+GAME=${GAME:-010071B00F63A000}; API=${API:-29}; export API;   # default Eastward Native (API 29 = Android 10+)
  PYV=3.14.9; CAPV=5.0.7; LZ4V=1.10.0
 export NDK=${NDK:-$WORK/android-ndk-r27c} DOTNET=${DOTNET:-$WORK/dotnet/dotnet} DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_CLI_TELEMETRY_OPTOUT=1
 TC=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin; CC="$TC/aarch64-linux-android$API-clang"
@@ -60,8 +60,8 @@ make -C "$A" -f Makefile.host GAME=$GAME NDK="$NDK" API=$API -j"$(nproc)" lib | 
 cp "$A/out/host-$GAME-vulkan/lib/libnxnative.so" "$LIBS/"
 
 step "3/8 the NSP / XCI unpacker and the shader translator (.NET NativeAOT for Android)"
-bash "$A/extract_aot/build_extract_aot.sh" | tail -1; cp "$A/extract_aot/out/libnx_extract.so" "$LIBS/"
-bash "$A/xlate_aot/build_xlate_aot.sh" | tail -1; cp "$A/xlate_aot/out/libdmsh_xlate.so" "$LIBS/"
+NDK="$NDK" API=$API bash "$A/extract_aot/build_extract_aot.sh" | tail -1; cp "$A/extract_aot/out/libnx_extract.so" "$LIBS/"
+NDK="$NDK" API=$API bash "$A/xlate_aot/build_xlate_aot.sh" | tail -1; cp "$A/xlate_aot/out/libdmsh_xlate.so" "$LIBS/"
 
 step "4/8 spirv-cross"
 NDK=$NDK API=$API bash "$A/spirv_cross/build_spirv_cross.sh" | tail -1; cp "$A/spirv_cross/out/libspirv_cross.so" "$LIBS/"

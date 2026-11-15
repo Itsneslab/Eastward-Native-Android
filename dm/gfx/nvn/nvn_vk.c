@@ -40,6 +40,7 @@
 #include "nvn_obj.h"
 #include "nvn_hmap.h"
 #include "nvn_spv.h"
+#include "spv_mali_fp16.h"
 #include "nvn_ovl.h"
 #include "nvn_dirty.h"
 #include "../tex/nvn_fmt_vk.h"
@@ -173,6 +174,7 @@ static int g_fmz; static _Atomic int g_fmz_n;   // shaders get spv_fmz (every mu
 static unsigned g_exact; static _Atomic int g_exact_n;
 static int g_initloc; static _Atomic int g_initloc_n;   // shaders get spv_init_locals (the translator's registers start at zero, as Mesa's compilers treat undefined values: mtl_init decides)   // shaders get spv_exact_math (Maxwell's log2 / exp2 / inversesqrt / sqrt / F2I at their edge cases: mtl_init decides)
 static int g_nanmm; static _Atomic int g_nanmm_n;           // shaders get spv_nan_minmax (min / max / saturate drop NaN as on Maxwell: mtl_init decides; 2: spv_nan_select too); how many it changed
+static int g_malifp16; static _Atomic int g_malifp16_n;     // fragment shaders get RelaxedPrecision on safe color/lighting ALU (spv_mali_fp16); mtl_init / DM_VK_MALI_FP16 decides
 static int g_dualsrc = 1;        // the device blends with a second shader output (dualSrcBlend): Arm's own Mali driver has none (r44p1)
 static int g_tlsem = 1;          // the device has timeline semaphores; 0: each submission signals a fence of its own instead (older Adreno stock drivers, Vulkan 1.1, #99)
 // Markers of a set-up step that crashed the driver (mark_file below), one set per driver kind: a crash on a driver package does not change the phone's own driver
@@ -530,6 +532,10 @@ void mtl_init(void) {
     //   five classes (#47, mali-white-test1). On by default with Arm's own driver; DM_VK_INIT_LOCALS=0 / 1 decides on any driver
     { const char *e = getenv("DM_VK_INIT_LOCALS"); g_initloc = e ? atoi(e) != 0 : g_arm_rel != 0;
       if (g_initloc) VLOG("shaders: the translator's registers start at zero (undefined values as Mesa's compilers make them%s)", e ? ", DM_VK_INIT_LOCALS" : ", Arm's own driver"); }
+    // Arm Mali fragment dual-issue FP16 (spv_mali_fp16): marks safe color/lighting ALU and local Function variables RelaxedPrecision while keeping UVs, derivatives,
+    //   BuiltIns and uniform/input loads FP32. On by default on Arm's own Mali driver (g_arm_rel); DM_VK_MALI_FP16=0 / 1 decides on any driver
+    { const char *e = getenv("DM_VK_MALI_FP16"); g_malifp16 = e ? atoi(e) != 0 : g_arm_rel != 0;
+      if (g_malifp16) VLOG("shaders: fragment color/lighting ALU uses RelaxedPrecision (FP16) while preserving FP32 UVs (%s)", e ? "DM_VK_MALI_FP16" : "Arm's own driver"); }
     // Dual-source blending (the game's blend factors SRC1_*) needs dualSrcBlend; Arm's own driver has none (r44p1), and a pipeline using it there is undefined: those
     //   factors become the first output's (bfac_dev), named once in the log. DM_VK_DUALSRC=keep passes them as they are
     g_dualsrc = f2.features.dualSrcBlend || (getenv("DM_VK_DUALSRC") && !strcmp(getenv("DM_VK_DUALSRC"), "keep"));
@@ -2474,6 +2480,19 @@ static vshader *shader_load(const uint8_t key[8], int st) {
     if (g_probe && spst == 4) { size_t nw; uint32_t *c2 = spv_probe(code, ns / 4, &nw, (unsigned)g_probe); if (c2) { free(code); code = c2; ns = nw * 4; } }   // (DM_VK_PROBE, fragment shaders)
     if (g_exact) { size_t nw; uint32_t *c2 = spv_exact_math(code, ns / 4, &nw, g_exact); if (c2) { free(code); code = c2; ns = nw * 4; atomic_fetch_add(&g_exact_n, 1); } }
     if (g_initloc) { size_t nw; uint32_t *c2 = spv_init_locals(code, ns / 4, &nw); if (c2) { free(code); code = c2; ns = nw * 4; atomic_fetch_add(&g_initloc_n, 1); } }
+    if (g_malifp16 && spst == 4 && ns >= 20) {
+        size_t nw = ns / 4, need = 0; int marked = 0; uint32_t bound = code[3];
+        uint8_t *flags = bound ? (uint8_t *)malloc(bound) : NULL;
+        if (flags) {
+            spv_mali_fp16(code, nw, flags, NULL, 0, &need, &marked);
+            if (need && marked > 0) {
+                uint32_t *c2 = (uint32_t *)malloc(need * 4);
+                size_t out_w = c2 ? spv_mali_fp16(code, nw, flags, c2, need, &need, &marked) : 0;
+                if (out_w) { free(code); code = c2; ns = out_w * 4; atomic_fetch_add(&g_malifp16_n, 1); } else free(c2);
+            }
+            free(flags);
+        }
+    }
     if (spst == 0 || spst == 2) { size_t nw; uint32_t *c2 = spv_init_outputs(code, ns / 4, &nw); if (c2) { free(code); code = c2; ns = nw * 4; } }   // outputs start at (0, 0, 0, 1) as on the hardware
     if (st == 0 && glcode) {
         size_t nw;
